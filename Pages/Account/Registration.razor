@@ -1,0 +1,79 @@
+﻿@page "/registration"
+@inject IAppService appService
+@inject NavigationManager navManager
+
+<h3>Sign Up</h3>
+
+<EditForm Model="signUpModel" OnValidSubmit="Submit">
+    <DataAnnotationsValidator />
+
+    <div class="row mb-3">
+        <label for="firstName" class="col-sm-2 col-form-label">First Name</label>
+        <div class="col-sm-10">
+            <input @bind-value="signUpModel.FirstName" type="text" class="form-control" id="firstName" autofocus>
+            <ValidationMessage For="@(()=> signUpModel.FirstName)" />
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <label for="lastName" class="col-sm-2 col-form-label">Last Name</label>
+        <div class="col-sm-10">
+            <input @bind-value="signUpModel.LastName" type="text" class="form-control" id="lastName">
+            <ValidationMessage For="@(()=> signUpModel.LastName)" />
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <label for="email" class="col-sm-2 col-form-label">Email</label>
+        <div class="col-sm-10">
+            <input @bind-value="signUpModel.Email" type="email" class="form-control" id="email">
+            <ValidationMessage For="@(()=> signUpModel.Email)" />
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <label for="password" class="col-sm-2 col-form-label">Password</label>
+        <div class="col-sm-10">
+            <input @bind-value="signUpModel.Password" type="password" class="form-control" id="password">
+            <ValidationMessage For="@(()=> signUpModel.Password)" />
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary">SIGN UP</button>
+
+    <div class="mt-2 text-center">
+        <NavLink class="nav-link" href="/login">
+            <span>Already have an account? Log In</span>
+        </NavLink>
+    </div>
+
+</EditForm>
+
+
+@code {
+    #region Properties
+    SignUpModel signUpModel = new();
+    ErrorMessageModel errorMessageModel = new();
+    string errorMessage;
+    #endregion
+
+
+    private async void Submit()
+    {
+        var response = await appService.SignUp(signUpModel);
+
+        if (response.IsSuccess)
+        {
+            //valid email and password
+            await App.Current.MainPage.DisplayAlert("Success", "User created", "OK");
+            navManager.NavigateTo("counter");
+        }
+        else
+        {
+            //token not returning from api
+            errorMessage = errorMessageModel.GetPrettyJson(response.ErrorMessage);
+            await App.Current.MainPage.DisplayAlert("Ooops", errorMessage, "OK");
+        }
+
+    }
+}

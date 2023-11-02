@@ -1,0 +1,108 @@
+﻿@page "/all-sizes"
+@using ChampagneMaui.Models.Size;
+@inject ISizeService sizeService
+@inject NavigationManager navManager
+
+<h3 class="text-center mb-5">List of Sizes</h3>
+
+@if(sizeList == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th scope="col">#</th>
+                    <th scope="col">Name FR</th>
+                    <th scope="col">Name EN</th>
+                    <th scope="col">Description FR</th>
+                    <th scope="col">Description EN</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var (s, i) in sizeList.Select((size, index) => (size, index)))
+                {
+                    var row = i + 1;
+                    <tr class="custom-cursor tr-hover-color" @onclick="@(() => DisplayOptions(s))">
+                        <th scope="row">@row</th>
+                        <td>@s.NameFR</td>
+                        <td>@s.NameEN</td>
+                        <td>@s.DescriptionFR</td>
+                        <td>@s.DescriptionEN</td>
+                    </tr>                    
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private List<SizeResponseModel> sizeList;
+
+    protected override async Task OnInitializedAsync()
+    {
+        sizeList = await sizeService.GetAllSizes();
+    }
+
+    private async void DisplayOptions(SizeResponseModel size)
+    {
+        var response = await App.Current.MainPage.DisplayActionSheet("Select Option", "OK", null, "Update", "Delete", "Delete if no prices");
+
+        if (response == "Update")
+        {
+            navManager.NavigateTo($"update-size/{size.Id}");
+        }
+        //else if (response == "Delete")
+        //{
+        //    var deleteResponse = await sizeService.DeleteSize(new DeleteSizeRequestModel
+        //        {
+        //            Id = size.Id
+        //        });
+
+        //    if (deleteResponse.IsSuccess)
+        //    {
+        //        await OnInitializedAsync();
+        //        this.StateHasChanged();
+        //    }          
+        //}
+        else if (response == "Delete")
+        {
+            var userChoice = await App.Current.MainPage.DisplayAlert("Delete", "You are about to delete the size and any prices associated. Keep deleting?", "Yes", "No");
+
+            if (userChoice)
+            {
+                var deleteResponse = await sizeService.DeleteSizeWithPrices(size.Id);
+
+                if (deleteResponse.IsSuccess)
+                {
+                    await App.Current.MainPage.DisplayAlert("Success", deleteResponse.Message, "OK");
+                    await OnInitializedAsync();
+                    this.StateHasChanged();
+                }
+                else
+                {
+                    await App.Current.MainPage.DisplayAlert("Ooops", deleteResponse.Message, "OK");
+                }
+            }
+        }
+        else if (response == "Delete if no prices")
+        {
+            var deleteResponse = await sizeService.DeleteSizeIfNoPrices(size.Id);
+
+            if (deleteResponse.IsSuccess)
+            {
+                await App.Current.MainPage.DisplayAlert("Success", deleteResponse.Message, "OK");
+                await OnInitializedAsync();
+                this.StateHasChanged();
+            }
+            else
+            {
+                await App.Current.MainPage.DisplayAlert("Ooops", deleteResponse.Message, "OK");
+            }
+        }
+    }
+
+}

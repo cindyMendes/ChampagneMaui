@@ -1,0 +1,135 @@
+﻿@page "/update-price/{PriceId:int}"
+@inject IPriceService priceService
+@inject IChampagneService champagneService
+@inject ISizeService sizeService
+@inject NavigationManager navManager
+
+<h3 class="mb-5">Update Price</h3>
+
+<EditForm Model="editModel" OnValidSubmit="Submit">
+    <DataAnnotationsValidator />
+
+    <div class="row mb-3">
+        <label for="dropdownChampagne" class="col-sm-2 col-form-label">Champagne</label>
+        <div class="col-sm-4">
+            <select @bind="editModel.ChampagneId" class="form-select" id="dropdownChampagne">
+                <option value="-1">Select:</option>
+                @foreach (var c in champagneList)
+                {
+                    <option value="@c.Id">@c.Name</option>
+                }
+            </select>
+            <ValidationMessage For="@(()=> editModel.ChampagneId)" />
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <label for="dropdownSize" class="col-sm-2 col-form-label">Size</label>
+        <div class="col-sm-4">
+            <select @bind="editModel.SizeId" class="form-select" id="dropdownSize">
+                <option value="-1">Select:</option>
+                @foreach (var c in sizeList)
+                {
+                    <option value="@c.Id">@c.NameEN</option>
+                }
+            </select>
+            <ValidationMessage For="@(()=> editModel.SizeId)" />
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <label for="sellingPrice" class="col-sm-2 col-form-label">Selling Price</label>
+        <div class="col-sm-10">
+            <input @bind-value="editModel.SellingPrice" type="number" step="0.1" class="form-control" id="sellingPrice">
+            <ValidationMessage For="@(()=> editModel.SellingPrice)" />
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <label for="dropdownCurrency" class="col-sm-2 col-form-label">Currency</label>
+        <div class="col-sm-4">
+            <select @bind="editModel.Currency" class="form-select" id="dropdownCurrency">
+                <option value="">Choose:</option>
+                <option value="Euro">Euro</option>
+                <option value="Dollar">Dollar</option>
+                <option value="Pound">Pound</option>
+            </select>
+            <ValidationMessage For="@(()=> editModel.Currency)" />
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary margin-top-right">UPDATE</button>
+    <button type="reset" class="btn btn-danger margin-top-right">RESET</button>
+    <NavLink href="/price">
+        <button class="btn btn-secondary margin-top-right">CANCEL</button>
+    </NavLink>
+</EditForm>
+
+
+@code {
+    #region Parameters
+    [Parameter]
+    public int PriceId { get; set; }
+    #endregion
+
+    #region Properties
+    UpdatePriceRequestModel editModel = new();
+    private List<ChampagneResponseModel> champagneList = new();
+    private List<SizeResponseModel> sizeList = new();
+    #endregion
+
+    #region Lifecycle
+    protected override async Task OnInitializedAsync()
+    {
+        champagneList = await champagneService.GetAllChampagnes();
+        sizeList = await sizeService.GetAllSizes();
+
+        if (PriceId > 0)
+        {
+            var existingPriceDetails = await priceService.GetPriceById(PriceId);
+
+            if (existingPriceDetails?.Id > 0)
+            {
+                editModel.ChampagneId = existingPriceDetails.ChampagneId;
+                editModel.SizeId = existingPriceDetails.SizeId;
+                editModel.SellingPrice = existingPriceDetails.SellingPrice;
+                editModel.Currency = existingPriceDetails.Currency;
+            }
+        }
+    }
+    #endregion
+
+    #region Methods
+    private async void Submit()
+    {
+        var updatePriceRequest = new UpdatePriceRequestModel
+        {
+            Id = PriceId,
+            ChampagneId = editModel.ChampagneId,
+            SizeId = editModel.SizeId,
+            SellingPrice = editModel.SellingPrice,
+            Currency = editModel.Currency,
+        };
+
+        if (PriceId > 0)
+        {
+            var response = await priceService.UpdatePrice(updatePriceRequest);
+
+            if (response.IsSuccess)
+            {
+                editModel.SellingPrice = 0;
+                this.StateHasChanged();
+
+                await App.Current.MainPage.DisplayAlert("Success", response.Message, "OK");
+                navManager.NavigateTo("all-prices");
+            }
+            else
+            {
+                await App.Current.MainPage.DisplayAlert("Ooops", response.Message, "OK");
+            }
+        }
+    }
+    #endregion
+
+
+}

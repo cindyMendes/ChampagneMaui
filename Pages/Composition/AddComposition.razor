@@ -1,0 +1,122 @@
+﻿@page "/add-composition"
+@inject ICompositionService compositionService
+@inject IChampagneService champagneService
+@inject IGrapeVarietyService grapeVarietyService
+@inject NavigationManager navManager;
+
+<h3 class="mb-5">Add Composition</h3>
+
+<EditForm Model="editModel" OnValidSubmit="Submit">
+    <DataAnnotationsValidator />
+
+    <div class="row mb-3">
+        <label for="dropdownChampagne" class="col-sm-2 col-form-label">Champagne</label>
+        <div class="col-sm-4">
+            <select @bind="editModel.ChampagneId" class="form-select" id="dropdownChampagne">
+                <option value="-1">Select:</option>
+                @foreach (var c in champagneList)
+                {
+                    <option value="@c.Id">@c.Name</option>
+                }
+            </select>
+            <ValidationMessage For="@(()=> editModel.ChampagneId)" />
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <label for="dropdownGrapeVariety" class="col-sm-2 col-form-label">Grape Variety</label>
+        <div class="col-sm-4">
+            <select @bind="editModel.GrapeVarietyId" class="form-select" id="dropdownGrapeVariety">
+                <option value="-1">Select:</option>
+                @foreach (var g in grapeVarietyList)
+                {
+                    <option value="@g.Id">@g.Name</option>
+                }
+            </select>
+            <ValidationMessage For="@(()=> editModel.GrapeVarietyId)" />
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <label for="percentage" class="col-sm-2 col-form-label">Percentage</label>
+        <div class="col-sm-10">
+            <input @bind-value="editModel.Percentage" type="number" class="form-control" id="percentage">
+            <ValidationMessage For="@(()=> editModel.Percentage)" />
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary margin-top-right">ADD</button>
+    <button type="reset" class="btn btn-danger margin-top-right">RESET</button>
+    <NavLink href="/price">
+        <button class="btn btn-secondary margin-top-right">CANCEL</button>
+    </NavLink>
+</EditForm>
+
+@code {
+    #region Parameters
+    [Parameter]
+    public int CompositionId { get; set; }
+    #endregion
+
+    #region Properties
+    AddCompositionRequestModel editModel = new();
+    private List<ChampagneResponseModel> champagneList = new();
+    private List<GrapeVarietyResponseModel> grapeVarietyList = new();
+    #endregion
+
+    #region Lifecycle
+    protected override async Task OnInitializedAsync()
+    {
+        champagneList = await champagneService.GetAllChampagnes();
+        grapeVarietyList = await grapeVarietyService.GetAllGrapeVarieties();
+
+        if (CompositionId > 0)
+        {
+            var existingCompositionDetails = await compositionService.GetCompositionById(CompositionId);
+
+            if (existingCompositionDetails?.Id > 0)
+            {
+                editModel.ChampagneId = existingCompositionDetails.ChampagneId;
+                editModel.GrapeVarietyId = existingCompositionDetails.GrapeVarietyId;
+                editModel.Percentage = existingCompositionDetails.Percentage;
+            }
+        }
+    }
+    #endregion
+
+    #region Methods
+    private async void Submit()
+    {
+        var addCompositionRequest = new AddCompositionRequestModel
+            {
+                ChampagneId = editModel.ChampagneId,
+                GrapeVarietyId = editModel.GrapeVarietyId,
+                Percentage = editModel.Percentage,
+            };
+
+        if (CompositionId > 0)
+        {
+            navManager.NavigateTo("all-compositions");
+        }
+        else
+        {
+            var response = await compositionService.AddComposition(addCompositionRequest);
+
+            if (response.IsSuccess)
+            {
+                editModel.ChampagneId = editModel.GrapeVarietyId = -1;
+                editModel.Percentage = 0;
+                this.StateHasChanged();
+
+                await App.Current.MainPage.DisplayAlert("Success", response.Message, "OK");
+                navManager.NavigateTo("all-compositions");
+            }
+            else
+            {
+                await App.Current.MainPage.DisplayAlert("Ooops", response.Message, "OK");
+            }
+        }
+    }
+    #endregion
+
+}

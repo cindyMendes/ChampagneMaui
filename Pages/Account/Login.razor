@@ -1,0 +1,95 @@
+﻿@page "/login"
+@inject IAppService appService
+@inject NavigationManager navManager
+
+<h3>Login</h3>
+
+<EditForm Model="loginModel" OnValidSubmit="Submit">
+
+    <DataAnnotationsValidator />
+
+    <div class="form-group">
+        <label>Email</label>
+        <input @bind-value="loginModel.Email" class="form-control" type="email" placeholder="Enter email" autofocus/>
+        <ValidationMessage For="@(()=> loginModel.Email)" />
+    </div>
+
+    <div class=" mt-2 form-group">
+        <label>Password</label>
+        <input @bind-value="loginModel.Password" class="form-control" type="password" placeholder="Enter password" />
+        <ValidationMessage For="@(()=> loginModel.Password)" />
+    </div>
+
+    <div class="mt-2">
+        <button class="btn btn-primary" type="submit">LOG IN</button>
+    </div>
+
+    <div class="mt-2 text-center">
+        <NavLink class="nav-link" href="registration">
+            <span>Don't have an account? Sign Up</span>
+        </NavLink>
+    </div>
+
+</EditForm>
+
+@code {
+    LoginModel loginModel = new();
+
+    private async void Submit()
+    {
+        var response = await appService.Login(loginModel);
+
+        if (response == "Login successful")
+        {
+            //valid email and password
+            await App.Current.MainPage.DisplayAlert("Success", "Valid email and password", "OK");
+
+            var userBasicDetail = new UserBasicDetail
+            {
+                Email = loginModel.Email
+            };
+
+            string userBasicSerialize = JsonConvert.SerializeObject(userBasicDetail);
+            await SecureStorage.SetAsync(nameof(Setting.UserBasicDetail), userBasicSerialize);
+            Setting.UserBasicDetail = userBasicDetail;
+
+            navManager.NavigateTo("/dashboard");
+        }
+        else
+        {
+            //token not returning from api
+            await App.Current.MainPage.DisplayAlert("Ooops", "Invalid email or password", "OK");
+        }
+
+
+        ////This for web token
+        //if (!string.IsNullOrEmpty(response))
+        //{
+        //    var handler = new JwtSecurityTokenHandler();
+        //    var jsonToken = handler.ReadToken(response) as JwtSecurityToken;
+
+        //    string userId = jsonToken.Claims.FirstOrDefault(u => u.Type == JwtRegisteredClaimNames.NameId).Value;
+        //    string userName = jsonToken.Claims.FirstOrDefault(u => u.Type == ClaimTypes.Name).Value;
+        //    string userEmail = loginModel.Email;
+
+        //    var userBasicDetail = new UserBasicDetail
+        //    {
+        //        Email = userEmail,
+        //        Name = userName,
+        //        Token = response,
+        //        UserId = userId
+        //    };
+
+        //    string userBasicSerialize = JsonConvert.SerializeObject(userBasicDetail);
+        //    await SecureStorage.SetAsync(nameof(Setting.UserBasicDetail), userBasicSerialize);
+        //    Setting.UserBasicDetail = userBasicDetail;
+
+        //    navManager.NavigateTo("/dashboard");
+        //}
+        //else
+        //{
+        //    //token not returning from api
+        //    await App.Current.MainPage.DisplayAlert("Ooops", "Invalid email or password", "OK");
+        //}
+    }
+}

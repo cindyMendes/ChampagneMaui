@@ -1,0 +1,109 @@
+﻿@page "/update-size/{SizeId:int}"
+@inject ISizeService sizeService
+@inject NavigationManager navManager
+
+<h3 class="mb-5">Update Size</h3>
+
+<EditForm Model="editModel" OnValidSubmit="Submit">
+    <DataAnnotationsValidator />
+
+    <div class="row mb-3">
+        <label for="nameEN" class="col-sm-2 col-form-label">Name EN</label>
+        <div class="col-sm-10">
+            <input @bind-value="editModel.NameEN" type="text" class="form-control" id="nameEN" autofocus>
+            <ValidationMessage For="@(()=> editModel.NameEN)" />
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <label for="nameFR" class="col-sm-2 col-form-label">Name FR</label>
+        <div class="col-sm-10">
+            <input @bind-value="editModel.NameFR" type="text" class="form-control" id="nameFR">
+            <ValidationMessage For="@(()=> editModel.NameFR)" />
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <label for="descriptionEN" class="col-sm-2 col-form-label">Description EN</label>
+        <div class="col-sm-10">
+            <textarea @bind="editModel.DescriptionEN" class="form-control" id="descriptionEN"></textarea>
+            <ValidationMessage For="@(()=> editModel.DescriptionEN)" />
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <label for="descriptionFR" class="col-sm-2 col-form-label">Description FR</label>
+        <div class="col-sm-10">
+            <textarea @bind="editModel.DescriptionFR" class="form-control" id="descriptionFR"></textarea>
+            <ValidationMessage For="@(()=> editModel.DescriptionFR)" />
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary margin-top-right">UPDATE</button>
+    <button type="reset" class="btn btn-danger margin-top-right">RESET</button>
+    <NavLink href="/size">
+        <button class="btn btn-secondary margin-top-right">CANCEL</button>
+    </NavLink>
+</EditForm>
+
+@code {
+    #region Parameters
+    [Parameter]
+    public int SizeId { get; set; }
+    #endregion
+
+    #region Properties
+    UpdateSizeRequestModel editModel = new();
+    #endregion
+
+    #region Lifecycle
+    protected override async Task OnInitializedAsync()
+    {
+        if (SizeId > 0)
+        {
+            var existingSizeDetails = await sizeService.GetSizeById(SizeId);
+
+            if (existingSizeDetails?.Id > 0)
+            {
+                editModel.NameEN = existingSizeDetails.NameEN;
+                editModel.NameFR = existingSizeDetails.NameFR;
+                editModel.DescriptionEN = existingSizeDetails.DescriptionEN;
+                editModel.DescriptionFR = existingSizeDetails.DescriptionFR;
+            }
+        }
+    }
+    #endregion
+
+    #region Methods
+    private async void Submit()
+    {
+        var updateSizeRequest = new UpdateSizeRequestModel
+        {
+            Id = SizeId,
+            NameEN = editModel.NameEN,
+            NameFR = editModel.NameFR,
+            DescriptionEN = editModel.DescriptionEN,
+            DescriptionFR = editModel.DescriptionFR,
+        };
+
+        if (SizeId > 0)
+        {
+            var response = await sizeService.UpdateSize(updateSizeRequest);
+
+            if (response.IsSuccess)
+            {
+                editModel.NameEN = editModel.NameFR = editModel.DescriptionEN = editModel.DescriptionFR = string.Empty;
+                await App.Current.MainPage.DisplayAlert("Success", response.Message, "OK");
+                this.StateHasChanged();
+                navManager.NavigateTo("all-sizes");
+            }
+            else
+            {
+                await App.Current.MainPage.DisplayAlert("Ooops", response.Message, "OK");
+            }
+        }
+    }
+    #endregion
+
+
+}

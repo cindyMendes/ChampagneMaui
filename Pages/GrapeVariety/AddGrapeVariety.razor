@@ -1,0 +1,83 @@
+﻿@page "/add-grape-variety"
+@inject IGrapeVarietyService grapeVarietyService
+@inject NavigationManager navManager
+
+<h3 class="mb-5">Add Grape Variety</h3>
+
+<EditForm Model="editModel" OnValidSubmit="Submit">
+    <DataAnnotationsValidator />
+
+    <div class="row mb-3">
+        <label for="name" class="col-sm-2 col-form-label">Name</label>
+        <div class="col-sm-10">
+            <input @bind-value="editModel.Name" type="text" class="form-control" id="name" autofocus>
+            <ValidationMessage For="@(()=> editModel.Name)" />
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary margin-top-right">ADD</button>
+    <button type="reset" class="btn btn-danger margin-top-right">RESET</button>
+    <NavLink href="/grape-variety">
+        <button class="btn btn-secondary margin-top-right">CANCEL</button>
+    </NavLink>
+</EditForm>
+
+@code {
+    #region Parameters
+    [Parameter]
+    public int GrapeVarietyId { get; set; }
+    #endregion
+
+    #region Properties
+    AddGrapeVarietyRequestModel editModel = new();
+    #endregion
+
+    #region Lifecycle
+    protected override async Task OnInitializedAsync()
+    {
+        if (GrapeVarietyId > 0)
+        {
+            var existingChmapagneDetails = await grapeVarietyService.GetGrapeVarietyById(GrapeVarietyId);
+
+            if (existingChmapagneDetails?.Id > 0)
+            {
+                editModel.Name = existingChmapagneDetails.Name;
+            }
+        }
+    }
+    #endregion
+
+    #region Methods
+    private async void Submit()
+    {
+        var addGrapeVarietyRequest = new AddGrapeVarietyRequestModel
+        {
+            Name = editModel.Name,
+        };
+
+        if (GrapeVarietyId > 0)
+        {
+            navManager.NavigateTo("all-grape-varieties");
+        }
+        else
+        {
+            var response = await grapeVarietyService.AddGrapeVariety(addGrapeVarietyRequest);
+
+            if (response.IsSuccess)
+            {
+                editModel.Name = string.Empty;
+                this.StateHasChanged();
+
+                await App.Current.MainPage.DisplayAlert("Success", response.Message, "OK");
+                navManager.NavigateTo("all-grape-varieties");
+            }
+            else
+            {
+                await App.Current.MainPage.DisplayAlert("Ooops", response.Message, "OK");
+            }
+        }
+    }
+    #endregion
+
+
+}

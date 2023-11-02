@@ -1,0 +1,190 @@
+﻿@page "/champagnes-by-size"
+@inject ISizeService sizeService
+@inject IChampagneService champagneService
+@inject NavigationManager navManager
+
+<h3 class="mb-5">Champagnes by Size</h3>
+
+<EditForm Model="editModel" OnValidSubmit="Submit">
+    <DataAnnotationsValidator />
+
+    <div class="row mb-3">
+        <label for="dropdownSize" class="col-sm-2 col-form-label">Size</label>
+        <div class="col-sm-4">
+            <select @bind="editModel.Id" class="form-select" id="dropdownSize">
+                <option value="-1">Select:</option>
+                @foreach (var c in sizeList)
+                {
+                    <option value="@c.Id">@c.NameEN</option>
+                }
+            </select>
+            <ValidationMessage For="@(()=> editModel.Id)" />
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary margin-top-right">SEARCH</button>
+    <button type="reset" class="btn btn-danger margin-top-right" @onclick="() => Reset()">RESET</button>
+    <NavLink href="/champagne">
+        <button class="btn btn-secondary margin-top-right">CANCEL</button>
+    </NavLink>
+</EditForm>
+
+
+@if (showTable)
+{
+    if (sizeCount == 1)
+    {
+        <p class="mt-5">@selectedSizeName size has @sizeCount champagne.</p>
+    }
+    else
+    {
+        <p class="mt-5">@selectedSizeName has @sizeCount champagnes.</p>
+    }
+
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th scope="col">#</th>
+                    <th scope="col">Name</th>
+                    <th scope="col">Description</th>
+                    <th scope="col">Alcohol Level</th>
+                    <th scope="col">Bottling Date</th>
+                    <th scope="col">Aging</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var (c, i) in champagneDetails.Select((champagne, index) => (champagne, index)))
+                {
+                    var row = i + 1;
+                    <tr class="custom-cursor tr-hover-color" @onclick="@(() => DisplayOptions(c))">
+                        <th scope="row">@row</th>
+                        <td>@c.Name</td>
+                        <td>@c.Description</td>
+                        <td>@c.AlcoholLevel</td>
+                        <td>@c.BottlingDate</td>
+                        <td>@c.Aging</td>
+                    </tr>                 
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+
+
+@code {
+    #region Properties
+    SizeByIdRequestModel editModel = new();
+    private List<SizeResponseModel> sizeList = new();
+    private bool showTable = false;
+    private List<ChampagneResponseModel> champagneDetails;
+    private int sizeCount = 0;
+    private string selectedSizeName = "This size";
+    #endregion
+
+    #region Lifecycle
+    protected override async Task OnInitializedAsync()
+    {
+        sizeList = await sizeService.GetAllSizes();
+    }
+    #endregion
+
+    #region Methods
+    private async void Submit()
+    {
+        var selectedChampagne = sizeList.FirstOrDefault(c => c.Id == editModel.Id);
+
+        if (selectedChampagne != null)
+        {
+            selectedSizeName = selectedChampagne.NameEN;
+            champagneDetails = await sizeService.GetChampagnesBySizeId(editModel.Id);
+
+            if (champagneDetails.Count == 0)
+            {
+                await App.Current.MainPage.DisplayAlert("Ooops", "No champagnes found with this size", "Ok");
+                showTable = false;
+            }
+            else
+            {
+                showTable = true;
+                sizeCount = champagneDetails.Count;
+                editModel.Id = -1;
+            }
+        }
+        else
+        {
+            await App.Current.MainPage.DisplayAlert("Ooops", "Please select a champagne", "Ok");
+            showTable = false;
+        }
+
+        this.StateHasChanged();
+    }
+
+
+    private void Reset()
+    {
+        showTable = false;
+        sizeCount = 0;
+        editModel.Id = -1;
+        this.StateHasChanged();
+    }
+
+    private async void DisplayOptions(ChampagneResponseModel champagne)
+    {
+        var response = await App.Current.MainPage.DisplayActionSheet("Select Option", "OK", null, "Update", "Delete", "Delete Prices and Composition Associated");
+
+        if (response == "Update")
+        {
+            navManager.NavigateTo($"update-champagne/{champagne.Id}");
+        }
+        //else if (response == "Delete")
+        //{
+        //    var deleteResponse = await champagneService.DeleteSize(new DeleteSizeRequestModel
+        //        {
+        //            Id = size.Id
+        //        });
+
+        //    if (deleteResponse.IsSuccess)
+        //    {
+        //        await OnInitializedAsync();
+        //        this.StateHasChanged();
+        //    }
+        //}
+        else if (response == "Delete")
+        {
+            var deleteResponse = await champagneService.DeleteChampagneIfNoPricesAndCompositions(champagne.Id);
+
+            if (deleteResponse.IsSuccess)
+            {
+                await App.Current.MainPage.DisplayAlert("Success", deleteResponse.Message, "OK");
+                await OnInitializedAsync();
+                this.StateHasChanged();
+            }
+            else
+            {
+                await App.Current.MainPage.DisplayAlert("Ooops", deleteResponse.Message, "OK");
+            }
+        }
+        else if (response == "Delete Prices and Composition Associated")
+        {
+            var userChoice = await App.Current.MainPage.DisplayAlert("Delete", "You are about to delete the champagne and any prices and compositions associated. Keep deleting?", "Yes", "No");
+
+            if (userChoice)
+            {
+                var deleteResponse = await champagneService.DeleteChampagneWithPricesAndCompositions(champagne.Id);
+                if (deleteResponse.IsSuccess)
+                {
+                    await App.Current.MainPage.DisplayAlert("Success", deleteResponse.Message, "OK");
+                    await OnInitializedAsync();
+                    this.StateHasChanged();
+                }
+                else
+                {
+                    await App.Current.MainPage.DisplayAlert("Ooops", deleteResponse.Message, "OK");
+                }
+            }
+        }
+    }
+    #endregion
+}

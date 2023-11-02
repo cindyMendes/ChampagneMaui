@@ -1,0 +1,162 @@
+﻿ @page "/update-champagne/{ChampagneId:int}"
+ @inject IChampagneService champagneService
+ @inject NavigationManager navManager
+ @using System.Text.RegularExpressions;
+
+
+<h3 class="mb-5">Update Champagne</h3>
+
+<EditForm Model="editModel" OnValidSubmit="Submit">
+    <DataAnnotationsValidator />
+
+    <div class="row mb-3">
+        <label for="name" class="col-sm-2 col-form-label">Name</label>
+        <div class="col-sm-10">
+            <input @bind-value="editModel.Name" type="text" class="form-control" id="name" autofocus>
+            <ValidationMessage For="@(()=> editModel.Name)" />
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <label for="description" class="col-sm-2 col-form-label">Description</label>
+        <div class="col-sm-10">
+            <textarea @bind="editModel.Description" class="form-control" id="description"></textarea>
+            <ValidationMessage For="@(()=> editModel.Description)" />
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <label for="alcoholLevel" class="col-sm-2 col-form-label">AlcoholLevel</label>
+        <div class="col-sm-10">
+            <input @bind-value="editModel.AlcoholLevel" type="number" step="0.1" class="form-control" id="alcoholLevel">
+            <ValidationMessage For="@(()=> editModel.AlcoholLevel)" />
+        </div>
+    </div>
+
+    @*<div class="row mb-3">
+        <label for="aging" class="col-sm-2 col-form-label">Aging</label>
+        <div class="col-sm-4">
+            <input @bind-value="editModel.Aging" type="number" step="1" class="form-control" id="aging">
+            <ValidationMessage For="@(()=> editModel.Aging)" />
+        </div>
+        <div class="col-sm-4">
+            <select @bind="selectedOption" class="form-select" id="dropdownMenu">
+                <option value="months">months</option>
+                <option value="years">years</option>
+            </select>
+            <ValidationMessage For="@(()=> editModel.Aging)" />
+        </div>
+    </div>*@
+
+    <div class="row mb-3">
+        <label for="bottlingDate" class="col-sm-2 col-form-label">BottlingDate</label>
+        <div class="col-sm-10">
+            <input @bind-value="editModel.BottlingDate" type="date" class="form-control" id="bottlingDate" autofocus>
+            <ValidationMessage For="@(()=> editModel.BottlingDate)" />
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary">UPDATE</button>
+    <button type="reset" class="btn btn-danger">RESET</button>
+    <button href="/champagne" class="btn btn-secondary">CANCEL</button>
+</EditForm>
+
+@code {
+    #region Parameters
+    [Parameter]
+    public int ChampagneId { get; set; }
+    #endregion
+
+    #region Properties
+    UpdateChampagneRequestModel editModel = new ();
+    private string selectedOption = "months";
+    #endregion
+
+    #region Lifecycle
+    protected override async Task OnInitializedAsync()
+    {
+        if (ChampagneId > 0)
+        {
+            var existingChampagneDetails = await champagneService.GetChampagneById(ChampagneId);
+
+            if (existingChampagneDetails?.Id > 0)
+            {
+                editModel.Name = existingChampagneDetails.Name;
+                editModel.Description = existingChampagneDetails.Description;
+                editModel.AlcoholLevel = existingChampagneDetails.AlcoholLevel;
+                editModel.BottlingDate = existingChampagneDetails.BottlingDate;
+                //editModel.Aging = ExtractNumbers(existingChampagneDetails.Aging);
+                //selectedOption = ExtractLetters(existingChampagneDetails.Aging);
+            }
+        }
+    }
+    #endregion
+
+    #region Methods
+    private async void Submit()
+    {
+        var updateChampagneRequest = new UpdateChampagneRequestModel
+        {
+            Id = ChampagneId,
+            Name = editModel.Name,
+            Description = editModel.Description,
+            AlcoholLevel = editModel.AlcoholLevel,
+            BottlingDate = editModel.BottlingDate,
+            //Aging = editModel.Aging + " " + selectedOption,
+        };
+
+        if (ChampagneId > 0)
+        {
+            var response = await champagneService.UpdateChampagne(updateChampagneRequest);
+
+            if (response.IsSuccess)
+            {
+                editModel.Name = editModel.Description /*= editModel.Aging*/ = string.Empty;
+                editModel.AlcoholLevel = 0;
+                this.StateHasChanged();
+
+                await App.Current.MainPage.DisplayAlert("Success", response.Message, "OK");
+                navManager.NavigateTo("all-champagnes");
+            }
+            else
+            {
+                await App.Current.MainPage.DisplayAlert("Ooops", response.Message, "OK");
+            }
+        }
+    }
+
+    private string ExtractNumbers(string input)
+    {
+        string pattern = @"\d+"; // Match one or more digits
+
+        MatchCollection matches = Regex.Matches(input, pattern);
+
+        string number = "";
+
+        foreach (Match match in matches)
+        {
+            number += match.Value;
+        }
+
+        return number;
+    }
+
+    private string ExtractLetters(string input)
+    {
+        string pattern = "[A-Za-z]+"; // Match one or more letters
+
+        MatchCollection matches = Regex.Matches(input, pattern);
+
+        string letters = "";
+
+        foreach (Match match in matches)
+        {
+            letters += match.Value;
+        }
+
+        return letters;
+    }
+    #endregion
+
+
+}

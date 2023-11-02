@@ -1,0 +1,169 @@
+﻿@page "/grape-varieties-by-champagne"
+@inject IChampagneService champagneService
+@inject IGrapeVarietyService grapeVarietyService
+@inject NavigationManager navManager
+
+<h3>Grape Variety by Champagne</h3>
+
+<EditForm Model="editModel" OnValidSubmit="Submit">
+    <DataAnnotationsValidator />
+
+    <div class="row mb-3">
+        <label for="dropdownChampagne" class="col-sm-2 col-form-label">Champagne</label>
+        <div class="col-sm-4">
+            <select @bind="editModel.Id" class="form-select" id="dropdownChampagne">
+                <option value="-1">Select:</option>
+                @foreach (var c in champagneList)
+                {
+                    <option value="@c.Id">@c.Name</option>
+                }
+            </select>
+            <ValidationMessage For="@(()=> editModel.Id)" />
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary margin-top-right">SEARCH</button>
+    <button type="reset" class="btn btn-danger margin-top-right" @onclick="() => Reset()">RESET</button>
+    <NavLink href="/champagne">
+        <button class="btn btn-secondary margin-top-right">CANCEL</button>
+    </NavLink>
+</EditForm>
+
+
+@if (showTable)
+{
+    if (grapeVarietyCount == 1)
+    {
+        <p class="mt-5">@selectedChampagneName has @grapeVarietyCount grape variety.</p>
+    }
+    else
+    {
+        <p class="mt-5">@selectedChampagneName has @grapeVarietyCount grape varieties.</p>
+    }
+
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th scope="col">#</th>
+                    <th scope="col">Grape Variety</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var (g, i) in grapeVarietyDetails.Select((grape, index) => (grape, index)))
+                {
+                    var row = i + 1;
+                    <tr class="custom-cursor tr-hover-color" @onclick="@(() => DisplayOptions(g))">
+                        <th scope="row">@row</th>
+                        <td>@g.Name</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+
+
+@code {
+    #region Properties
+    ChampagneByIdRequestModel editModel = new();
+    private List<ChampagneResponseModel> champagneList = new();
+    private bool showTable = false;
+    private List<GrapeVarietyResponseModel> grapeVarietyDetails;
+    private int grapeVarietyCount = 0;
+    private string selectedChampagneName = "This champagne";
+    #endregion
+
+    #region Lifecycle
+    protected override async Task OnInitializedAsync()
+    {
+        champagneList = await champagneService.GetAllChampagnes();
+    }
+    #endregion
+
+    #region Methods
+    private async void Submit()
+    {
+        var selectedChampagne = champagneList.FirstOrDefault(c => c.Id == editModel.Id);
+
+        if (selectedChampagne != null)
+        {
+            selectedChampagneName = selectedChampagne.Name;
+            grapeVarietyDetails = await champagneService.GetGrapeVarietiesByChampagneId(editModel.Id);
+
+            if (grapeVarietyDetails.Count == 0)
+            {
+                await App.Current.MainPage.DisplayAlert("Ooops", "No grape varieties found", "Ok");
+                showTable = false;
+            }
+            else
+            {
+                showTable = true;
+                grapeVarietyCount = grapeVarietyDetails.Count;
+                editModel.Id = -1;
+            }
+        }
+        else
+        {
+            await App.Current.MainPage.DisplayAlert("Ooops", "Please select a champagne", "Ok");
+            showTable = false;
+        }
+
+        this.StateHasChanged();
+    }
+
+
+    private void Reset()
+    {
+        showTable = false;
+        grapeVarietyCount = 0;
+        editModel.Id = -1;
+        this.StateHasChanged();
+    }
+
+    private async void DisplayOptions(GrapeVarietyResponseModel grapeVariety)
+    {
+        var response = await App.Current.MainPage.DisplayActionSheet("Select Option", "OK", null, "Update", "Delete");
+
+        if (response == "Update")
+        {
+            navManager.NavigateTo($"update-grape-variety/{grapeVariety.Id}");
+        }
+        //else if (response == "Delete")
+        //{
+        //    var deleteResponse = await sizeService.DeleteSize(new DeleteSizeRequestModel
+        //        {
+        //            Id = size.Id
+        //        });
+
+        //    if (deleteResponse.IsSuccess)
+        //    {
+        //        await OnInitializedAsync();
+        //        this.StateHasChanged();
+        //    }
+        //}
+        else if (response == "Delete")
+        {
+            var userChoice = await App.Current.MainPage.DisplayAlert("Delete", "You are about to delete the size and any prices associated. Keep deleting?", "Yes", "No");
+
+            if (userChoice)
+            {
+                var deleteResponse = await grapeVarietyService.DeleteGrapeVariety(grapeVariety.Id);
+
+                if (deleteResponse.IsSuccess)
+                {
+                    await App.Current.MainPage.DisplayAlert("Success", deleteResponse.Message, "OK");
+                    await OnInitializedAsync();
+                    this.StateHasChanged();
+                }
+                else
+                {
+                    await App.Current.MainPage.DisplayAlert("Ooops", deleteResponse.Message, "OK");
+                }
+            }
+        }
+    }
+    #endregion
+}
+

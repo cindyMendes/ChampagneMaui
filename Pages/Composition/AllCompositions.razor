@@ -1,0 +1,85 @@
+﻿@page "/all-compositions"
+@using ChampagneMaui.Models.Composition;
+@inject ICompositionService compositionService
+@inject NavigationManager navManager
+
+<h3 class="text-center mb-5">List of Compositions</h3>
+
+@if (compositionList == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th scope="col">#</th>
+                    <th scope="col">Champagne</th>
+                    <th scope="col">Grape Variety</th>
+                    <th scope="col">Percentage</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var (c, i) in compositionList.Select((composition, index) => (composition, index)))
+                {
+                    var row = i + 1;
+                    <tr class="custom-cursor tr-hover-color" @onclick="@(() => DisplayOptions(c))">
+                        <th scope="row">@row</th>
+                        <td>@champagneNames[@i]</td>
+                        <td>@grapeVarietyNames[@i]</td>
+                        <td>@c.Percentage</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    #region Properties
+    private List<CompositionResponseModel> compositionList;
+    private List<string> champagneNames = new();
+    private List<string> grapeVarietyNames = new();
+    #endregion
+
+    #region Lifecycle
+    protected override async Task OnInitializedAsync()
+    {
+        compositionList = await compositionService.GetAllCompositions();
+
+        foreach (var p in compositionList)
+        {
+            var champagneInfo = await compositionService.GetChampagneInfoByCompositionId(p.Id);
+            champagneNames.Add(champagneInfo.Name);
+
+            var grapeVarietyInfo = await compositionService.GetGrapeVarietyInfoByCompositionId(p.Id);
+            grapeVarietyNames.Add(grapeVarietyInfo.Name);
+        }
+    }
+    #endregion
+
+    #region Methods
+    private async void DisplayOptions(CompositionResponseModel composition)
+    {
+        var response = await App.Current.MainPage.DisplayActionSheet("Select Option", "OK", null, "Update", "Delete");
+
+        if (response == "Update")
+        {
+            navManager.NavigateTo($"update-composition/{composition.Id}");
+        }
+        else if (response == "Delete")
+        {
+            var deleteResponse = await compositionService.DeleteComposition(composition.Id);
+
+            if (deleteResponse.IsSuccess)
+            {
+                await OnInitializedAsync();
+                this.StateHasChanged();
+            }
+        }
+    }
+    #endregion
+
+}

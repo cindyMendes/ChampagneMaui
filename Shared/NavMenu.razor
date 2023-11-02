@@ -1,0 +1,80 @@
+﻿@inject NavigationManager navManager
+
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="dashboard">ChampagneMaui</a>
+        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </div>
+</div>
+
+<div class="@NavMenuCssClass" @onclick="ToggleNavMenu">
+    <nav class="flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="dashboard" Match="NavLinkMatch.All">
+                <span class="oi oi-home" aria-hidden="true"></span> Home
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="champagne">
+                <span class="oi oi-signpost" aria-hidden="true"></span> Champagne
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="grape-variety">
+                <span class="oi oi-sun" aria-hidden="true"></span> Grape Variety 
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="size">
+                <span class="oi oi-cloud" aria-hidden="true"></span> Size
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="price">
+                <span class="oi oi-euro" aria-hidden="true"></span> Price
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="composition">
+                <span class="oi oi-basket" aria-hidden="true"></span> Composition
+            </NavLink>
+        </div>
+        @*<div class="nav-item px-3">
+            <NavLink class="nav-link" href="test">
+                <span class="oi oi-account-logout" aria-hidden="true"></span> Test
+            </NavLink>
+        </div>*@
+
+
+
+        @if (DeviceInfo.Platform == DevicePlatform.Android || DeviceInfo.Platform == DevicePlatform.iOS)
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="#" @onclick="LogOut">
+                    <span class="oi oi-account-logout" aria-hidden="true"></span> Log Out
+                </NavLink>
+            </div>
+        }
+
+    </nav>
+</div>
+
+@code {
+    private bool collapseNavMenu = true;
+
+    private string NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+
+    private void LogOut()
+    {
+        SecureStorage.RemoveAll();
+        Setting.UserBasicDetail = null;
+        navManager.NavigateTo("/login");
+    }
+}

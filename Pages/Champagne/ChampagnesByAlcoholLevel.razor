@@ -1,0 +1,165 @@
+﻿@page "/champagnes-by-alcohol-level"
+@inject IChampagneService champagneService
+@inject NavigationManager navManager
+
+<h3>Champagnes by Alcohol Level</h3>
+
+<EditForm Model="editModel" OnValidSubmit="Submit">
+    <DataAnnotationsValidator />
+
+    <div class="row mb-3">
+        <label for="threshold" class="col-sm-2 col-form-label">Threshold</label>
+        <div class="col-sm-10">
+            <input @bind-value="editModel.Threshold" type="number" step="0.1" class="form-control" id="threshold">
+            <ValidationMessage For="@(()=> editModel.Threshold)" />
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <label for="dropdownSign" class="col-sm-2 col-form-label">Sign</label>
+        <div class="col-sm-4">
+            <select @bind="editModel.Sign" class="form-select" id="dropdownSign">
+                <option value="">Choose:</option>
+                <option value="<">&lt;</option>
+                <option value="<=">&le;</option>
+                <option value=">">></option>
+                <option value=">=">&ge;</option>
+                <option value="=">=</option>
+            </select>
+            <ValidationMessage For="@(()=> editModel.Sign)" />
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary margin-top-right">SEARCH</button>
+    <button type="reset" class="btn btn-danger margin-top-right" @onclick="() => Reset()">RESET</button>
+    <NavLink href="/champagne">
+        <button class="btn btn-secondary margin-top-right">CANCEL</button>
+    </NavLink>
+</EditForm>
+
+@if (showTable)
+{
+    <div class="table-responsive mt-5" >
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th scope="col">#</th>
+                    <th scope="col">Name</th>
+                    <th scope="col">Description</th>
+                    <th scope="col">Alcohol Level</th>
+                    <th scope="col">Bottling Date</th>
+                    <th scope="col">Aging</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var (c, i) in champagneList.Select((champagne, index) => (champagne, index)))
+                {
+                    var row = i + 1;
+                    <tr class="custom-cursor tr-hover-color" @onclick="@(() => DisplayOptions(c))">
+                        <th scope="row">@row</th>
+                        <td>@c.Name</td>
+                        <td>@c.Description</td>
+                        <td>@c.AlcoholLevel</td>
+                        <td>@c.BottlingDate</td>
+                        <td>@c.Aging</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+
+
+@code {
+    #region Properties
+    ChampagnesByAlcoholLevelRequestModel editModel = new();
+    private List<ChampagneResponseModel> champagneList = new();
+    private bool showTable = false;
+    #endregion
+
+    #region Methods
+    private async void Submit()
+    {
+        champagneList.Clear();
+        champagneList = await champagneService.GetChampagnesByAlcoholLevel(editModel.Threshold, editModel.Sign);
+
+        if (champagneList.Count == 0)
+        {
+            await App.Current.MainPage.DisplayAlert("Ooops", "No data found", "OK");
+        }
+        else
+        {
+            showTable = true;   
+        }
+
+        editModel.Threshold = 0;
+        editModel.Sign = "";
+        this.StateHasChanged();
+    }
+
+    private void Reset()
+    {
+        champagneList.Clear();
+        showTable = false;
+        this.StateHasChanged();
+    }
+
+    private async void DisplayOptions(ChampagneResponseModel champagne)
+    {
+        var response = await App.Current.MainPage.DisplayActionSheet("Select Option", "OK", null, "Update", "Delete", "Delete Prices and Composition Associated");
+
+        if (response == "Update")
+        {
+            navManager.NavigateTo($"update-champagne/{champagne.Id}");
+        }
+        //else if (response == "Delete")
+        //{
+        //    var deleteResponse = await champagneService.DeleteSize(new DeleteSizeRequestModel
+        //        {
+        //            Id = size.Id
+        //        });
+
+        //    if (deleteResponse.IsSuccess)
+        //    {
+        //        await OnInitializedAsync();
+        //        this.StateHasChanged();
+        //    }
+        //}
+        else if (response == "Delete")
+        {
+            var deleteResponse = await champagneService.DeleteChampagneIfNoPricesAndCompositions(champagne.Id);
+
+            if (deleteResponse.IsSuccess)
+            {
+                await App.Current.MainPage.DisplayAlert("Success", deleteResponse.Message, "OK");
+                await OnInitializedAsync();
+                this.StateHasChanged();
+            }
+            else
+            {
+                await App.Current.MainPage.DisplayAlert("Ooops", deleteResponse.Message, "OK");
+            }
+        }
+        else if (response == "Delete Prices and Composition Associated")
+        {
+            var userChoice = await App.Current.MainPage.DisplayAlert("Delete", "You are about to delete the champagne and any prices and compositions associated. Keep deleting?", "Yes", "No");
+
+            if (userChoice)
+            {
+                var deleteResponse = await champagneService.DeleteChampagneWithPricesAndCompositions(champagne.Id);
+                if (deleteResponse.IsSuccess)
+                {
+                    await App.Current.MainPage.DisplayAlert("Success", deleteResponse.Message, "OK");
+                    await OnInitializedAsync();
+                    this.StateHasChanged();
+                }
+                else
+                {
+                    await App.Current.MainPage.DisplayAlert("Ooops", deleteResponse.Message, "OK");
+                }
+            }
+        }
+    }
+    #endregion
+}

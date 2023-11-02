@@ -1,0 +1,87 @@
+﻿@page "/all-prices"
+@using ChampagneMaui.Models.Size;
+@inject IPriceService priceService
+@inject NavigationManager navManager
+
+<h3 class="text-center mb-5">List of Prices</h3>
+
+@if(priceList == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th scope="col">#</th>
+                    <th scope="col">Champagne</th>
+                    <th scope="col">Size</th>
+                    <th scope="col">Selling Price</th>
+                    <th scope="col">Currency</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var (p, i) in priceList.Select((price, index) => (price, index)))
+                {
+                    var row = i + 1;
+                    <tr class="custom-cursor tr-hover-color" @onclick="@(() => DisplayOptions(p))">
+                        <th scope="row">@row</th>
+                        <td>@champagneNames[@i]</td>
+                        <td>@sizeNames[@i]</td>
+                        <td>@p.SellingPrice</td>
+                        <td>@p.Currency</td>
+                    </tr>                    
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    #region Properties
+    private List<PriceResponseModel> priceList;
+    private List<string> champagneNames = new();
+    private List<string> sizeNames = new();
+    #endregion
+
+    #region Lifecycle
+    protected override async Task OnInitializedAsync()
+    {
+        priceList = await priceService.GetAllPrices();
+
+        foreach(var p in priceList)
+        {
+            var champagneInfo = await priceService.GetChampagneInfoByPriceId(p.Id);
+            champagneNames.Add(champagneInfo.Name);
+
+            var sizeInfo = await priceService.GetSizeInfoByPriceId(p.Id);
+            sizeNames.Add(sizeInfo.NameEN);
+        }
+    }
+    #endregion
+
+    #region Methods
+    private async void DisplayOptions(PriceResponseModel price)
+    {
+        var response = await App.Current.MainPage.DisplayActionSheet("Select Option", "OK", null, "Update", "Delete");
+
+        if (response == "Update")
+        {
+            navManager.NavigateTo($"update-price/{price.Id}");
+        }
+        else if (response == "Delete")
+        {
+            var deleteResponse = await priceService.DeletePrice(price.Id);
+
+            if (deleteResponse.IsSuccess)
+            {
+                await OnInitializedAsync();
+                this.StateHasChanged();
+            }
+        }
+    }
+    #endregion
+
+}

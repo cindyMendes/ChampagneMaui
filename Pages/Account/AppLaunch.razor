@@ -1,0 +1,24 @@
+﻿@page "/"
+@inject NavigationManager navManager
+
+<h3>AppLaunch</h3>
+
+<p>Loading...</p>
+
+@code {
+    //protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
+    {
+        //string userDetails = await SecureStorage.GetAsync(nameof(Setting.UserBasicDetail));
+
+        //if (!string.IsNullOrEmpty(userDetails))
+        //{
+        //    navManager.NavigateTo("/dashboard");
+        //}
+        //else
+        //{
+        //    navManager.NavigateTo("/login");
+        //}
+        navManager.NavigateTo("/login");
+    }
+}

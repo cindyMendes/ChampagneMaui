@@ -1,0 +1,66 @@
+﻿@page "/all-grape-varieties"
+@using ChampagneMaui.Models.GrapeVariety;
+@inject IGrapeVarietyService grapeVarietyService
+@inject NavigationManager navManager
+
+<h3 class="text-center mb-5">List of Grape Varieties</h3>
+
+@if(grapeVarietyList == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th scope="col">#</th>
+                    <th scope="col">Name</th>
+                </tr>
+                
+            </thead>
+            <tbody>
+                @foreach (var (g, i) in grapeVarietyList.Select((grapeVariety, index) => (grapeVariety, index)))
+                {
+                    var row = i + 1;
+                    <tr class="custom-cursor tr-hover-color" @onclick="@(() => DisplayOptions(g))">
+                        <th scope="row">@row</th>
+                        <td>@g.Name</td>
+                    </tr>                  
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private List<GrapeVarietyResponseModel> grapeVarietyList;
+
+    protected override async Task OnInitializedAsync()
+    {
+        grapeVarietyList = await grapeVarietyService.GetAllGrapeVarieties();
+    }
+
+    private async void DisplayOptions(GrapeVarietyResponseModel grapeVariety)
+    {
+        var response = await App.Current.MainPage.DisplayActionSheet("Select Option", "OK", null, "Update", "Delete");
+
+        if (response == "Update")
+        {
+            navManager.NavigateTo($"update-grape-variety/{grapeVariety.Id}");
+        }
+        else if (response == "Delete")
+        {
+            var deleteResponse = await grapeVarietyService.DeleteGrapeVariety(grapeVariety.Id);
+
+            if (deleteResponse.IsSuccess)
+            {
+                await OnInitializedAsync();
+                this.StateHasChanged();
+            }
+        }
+    }
+
+
+}
